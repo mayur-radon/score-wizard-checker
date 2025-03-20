@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { Search } from "lucide-react";
+import { Search, Globe } from "lucide-react";
 
 interface SearchFormProps {
   onSearch: (url: string) => void;
@@ -41,20 +41,23 @@ const SearchForm = ({ onSearch, isLoading }: SearchFormProps) => {
       onSubmit={handleSubmit} 
       className="w-full max-w-3xl mx-auto"
     >
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-2 bg-white/20 p-2 rounded-xl backdrop-blur-md">
         <div className="relative flex-1">
+          <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-300">
+            <Globe className="w-5 h-5" />
+          </div>
           <Input
             type="text"
             placeholder="Enter website URL (e.g., example.com)"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            className="pl-4 pr-12 py-6 text-lg rounded-lg border-2 border-gray-200 focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
+            className="pl-12 pr-4 py-6 text-lg rounded-lg border-2 border-transparent bg-white/90 dark:bg-gray-900/90 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-200/50 dark:focus:ring-indigo-800/50 shadow-lg"
           />
         </div>
         <Button 
           type="submit" 
           size="lg"
-          className="bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-700 hover:to-purple-700 text-white py-6 px-8 rounded-lg font-medium transition-all duration-300 ease-in-out shadow-md hover:shadow-lg"
+          className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white py-6 px-8 rounded-lg font-medium transition-all duration-300 ease-in-out shadow-md hover:shadow-lg"
           disabled={isLoading}
         >
           {isLoading ? (

@@ -1,5 +1,6 @@
 
 import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 // Define the structure of website metrics
 export interface WebsiteMetrics {
@@ -12,8 +13,9 @@ export interface WebsiteMetrics {
   checkDate: string;
 }
 
-// This would typically use Moz's actual API
-// For now, we'll use a simulation since we don't have actual API keys
+// WhoisXML API key
+const WHOISXML_API_KEY = "at_hbwlV7bh0JlEzBBNU3NePAEMvFu7k";
+
 export const fetchWebsiteMetrics = async (url: string): Promise<WebsiteMetrics> => {
   // Validate URL format
   if (!url.match(/^(http|https):\/\/[a-zA-Z0-9][-a-zA-Z0-9.]*\.[a-zA-Z]{2,}(\/.*)?$/)) {
@@ -21,11 +23,17 @@ export const fetchWebsiteMetrics = async (url: string): Promise<WebsiteMetrics> 
   }
 
   try {
+    // Extract domain from URL
+    const domain = url.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    
+    // Fetch domain age using WhoisXML API
+    const domainAge = await fetchDomainAge(domain);
+    
     // In a real implementation, we would make an API call to Moz's API
     // For demonstration, we're simulating a response
     
     // Simulate network request
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Generate realistic but random metrics
     const domainAuthority = Math.floor(Math.random() * 100);
@@ -33,15 +41,10 @@ export const fetchWebsiteMetrics = async (url: string): Promise<WebsiteMetrics> 
     const spamScore = Math.floor(Math.random() * 15);
     const backlinks = Math.floor(Math.random() * 10000) + 1;
     
-    // Calculate a random domain age between 1-20 years
-    const currentYear = new Date().getFullYear();
-    const randomYear = currentYear - Math.floor(Math.random() * 20) - 1;
-    const domainAge = `${currentYear - randomYear} years`;
-    
     // Current date for the check
     const checkDate = new Date().toISOString();
     
-    return {
+    const result = {
       url,
       domainAuthority,
       pageAuthority,
@@ -50,6 +53,23 @@ export const fetchWebsiteMetrics = async (url: string): Promise<WebsiteMetrics> 
       domainAge,
       checkDate
     };
+    
+    // Save to Supabase if user is logged in
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
+      await supabase.from('search_history').insert({
+        user_id: user.id,
+        domain: domain,
+        domain_authority: domainAuthority,
+        page_authority: pageAuthority,
+        spam_score: spamScore,
+        backlinks_count: backlinks,
+        domain_age: domainAge
+      });
+    }
+    
+    return result;
   } catch (error) {
     console.error("Error fetching website metrics:", error);
     toast({
@@ -61,48 +81,74 @@ export const fetchWebsiteMetrics = async (url: string): Promise<WebsiteMetrics> 
   }
 };
 
-// In a real implementation, we would integrate with the actual MOZ API:
-/*
-const fetchWebsiteMetricsReal = async (url: string): Promise<WebsiteMetrics> => {
-  const accessId = process.env.MOZ_ACCESS_ID;
-  const secretKey = process.env.MOZ_SECRET_KEY;
-  
-  // Moz API endpoint (example)
-  const endpoint = `https://lsapi.seomoz.com/v2/url-metrics`;
-  
+const fetchDomainAge = async (domain: string): Promise<string> => {
   try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${btoa(`${accessId}:${secretKey}`)}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        targets: [url],
-        metrics: [
-          'domain_authority',
-          'page_authority', 
-          'spam_score',
-          'links'
-        ]
-      })
-    });
+    const response = await fetch(`https://www.whoisxmlapi.com/whoisserver/WhoisService?apiKey=${WHOISXML_API_KEY}&domainName=${domain}&outputFormat=JSON`);
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch domain information');
+    }
     
     const data = await response.json();
     
-    // Process and return the real data
-    return {
-      url,
-      domainAuthority: data.results[0].domain_authority,
-      pageAuthority: data.results[0].page_authority,
-      spamScore: data.results[0].spam_score,
-      backlinks: data.results[0].links,
-      domainAge: calculateDomainAge(data.results[0].first_seen),
-      checkDate: new Date().toISOString()
-    };
+    // Extract creation date from WhoisXML API response
+    const creationDate = data.WhoisRecord?.createdDate || data.WhoisRecord?.registryData?.createdDate;
+    
+    if (creationDate) {
+      const domainCreationDate = new Date(creationDate);
+      const currentDate = new Date();
+      
+      // Calculate years difference
+      const yearsDiff = currentDate.getFullYear() - domainCreationDate.getFullYear();
+      
+      // Calculate months difference if less than a year
+      if (yearsDiff < 1) {
+        const monthsDiff = currentDate.getMonth() - domainCreationDate.getMonth() + 
+                           (12 * (currentDate.getFullYear() - domainCreationDate.getFullYear()));
+        return `${monthsDiff} months`;
+      }
+      
+      return `${yearsDiff} years`;
+    }
+    
+    return "Unknown";
   } catch (error) {
-    console.error("Error fetching from Moz API:", error);
-    throw error;
+    console.error("Error fetching domain age:", error);
+    return "Unknown";
   }
 };
-*/
+
+// Function to get search history from Supabase
+export const getSearchHistory = async (): Promise<WebsiteMetrics[]> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      return [];
+    }
+    
+    const { data, error } = await supabase
+      .from('search_history')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(10);
+      
+    if (error) {
+      console.error("Error fetching search history:", error);
+      return [];
+    }
+    
+    return data.map(item => ({
+      url: `https://${item.domain}`,
+      domainAuthority: Number(item.domain_authority),
+      pageAuthority: Number(item.page_authority),
+      spamScore: Number(item.spam_score),
+      backlinks: Number(item.backlinks_count),
+      domainAge: item.domain_age,
+      checkDate: item.created_at
+    }));
+  } catch (error) {
+    console.error("Error fetching search history:", error);
+    return [];
+  }
+};

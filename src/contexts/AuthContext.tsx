@@ -1,51 +1,83 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, getCurrentUser, loginUser, registerUser, logoutUser, setCurrentUser } from '@/services/dbService';
 import { useToast } from '@/components/ui/use-toast';
+import { supabase } from "@/integrations/supabase/client";
+import { Session, User } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string, name?: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
+}
+
+interface AuthUserDetails {
+  name?: string;
+  email: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check for existing user on mount
-    const currentUser = getCurrentUser();
-    setUser(currentUser);
-    setIsLoading(false);
-  }, []);
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setIsLoading(false);
+        
+        if (event === 'SIGNED_IN' && session) {
+          toast({
+            title: "Login successful",
+            description: `Welcome back, ${session.user.email}!`,
+          });
+        }
+        
+        if (event === 'SIGNED_OUT') {
+          toast({
+            title: "Logged out",
+            description: "You have been successfully logged out",
+          });
+        }
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [toast]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const loggedInUser = loginUser(email, password);
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       
-      if (loggedInUser) {
-        setUser(loggedInUser);
-        setCurrentUser(loggedInUser);
-        toast({
-          title: "Login successful",
-          description: `Welcome back, ${loggedInUser.name || loggedInUser.email}!`,
-        });
-        return true;
-      } else {
+      if (error) {
         toast({
           title: "Login failed",
-          description: "Invalid email or password",
+          description: error.message,
           variant: "destructive",
         });
         return false;
       }
+      
+      return true;
     } catch (error) {
       toast({
         title: "Login error",
@@ -61,24 +93,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (email: string, password: string, name?: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const newUser = registerUser(email, password, name);
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name }
+        }
+      });
       
-      if (newUser) {
-        setUser(newUser);
-        setCurrentUser(newUser);
-        toast({
-          title: "Registration successful",
-          description: "Your account has been created",
-        });
-        return true;
-      } else {
+      if (error) {
         toast({
           title: "Registration failed",
-          description: "Could not create account",
+          description: error.message,
           variant: "destructive",
         });
         return false;
       }
+      
+      toast({
+        title: "Registration successful",
+        description: "Your account has been created. Please verify your email if required.",
+      });
+      return true;
     } catch (error) {
       toast({
         title: "Registration error",
@@ -91,17 +127,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
-    logoutUser();
-    setUser(null);
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out",
-    });
+  const logout = async () => {
+    setIsLoading(true);
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      toast({
+        title: "Logout error",
+        description: "There was a problem logging out",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, session, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
