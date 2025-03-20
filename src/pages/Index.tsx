@@ -148,31 +148,34 @@ const Index = () => {
             </Card>
           </div>
           
-          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 p-8 rounded-2xl shadow-inner mb-12">
-            <div className="flex flex-col md:flex-row items-center">
-              <div className="md:w-2/3 mb-6 md:mb-0 md:pr-8">
-                <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
-                  Create an Account for Free
-                </h3>
-                <p className="text-gray-700 dark:text-gray-300 mb-4">
-                  Sign up to save your search history, track website performance over time, and get access to premium features.
-                </p>
-                <Button asChild className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700">
-                  <Link to="/register">
-                    <Zap className="w-5 h-5 mr-2" />
-                    Get Started Now
-                  </Link>
-                </Button>
-              </div>
-              <div className="md:w-1/3">
-                <img 
-                  src="https://images.unsplash.com/photo-1557804506-669a67965ba0?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
-                  alt="Analytics dashboard" 
-                  className="rounded-lg shadow-md"
-                />
+          {/* Only show "Get Started" banner for non-logged in users */}
+          {!user && (
+            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 p-8 rounded-2xl shadow-inner mb-12">
+              <div className="flex flex-col md:flex-row items-center">
+                <div className="md:w-2/3 mb-6 md:mb-0 md:pr-8">
+                  <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
+                    Create an Account for Free
+                  </h3>
+                  <p className="text-gray-700 dark:text-gray-300 mb-4">
+                    Sign up to save your search history, track website performance over time, and get access to premium features.
+                  </p>
+                  <Button asChild className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700">
+                    <Link to="/register">
+                      <Zap className="w-5 h-5 mr-2" />
+                      Get Started Now
+                    </Link>
+                  </Button>
+                </div>
+                <div className="md:w-1/3">
+                  <img 
+                    src="https://images.unsplash.com/photo-1557804506-669a67965ba0?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
+                    alt="Analytics dashboard" 
+                    className="rounded-lg shadow-md"
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
       

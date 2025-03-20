@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Download, FileType, Image } from "lucide-react";
+import { Download, FileText, Image } from "lucide-react";
 import { useRef } from "react";
 import html2canvas from 'html2canvas';
 
@@ -31,12 +31,29 @@ const ResultsDisplay = ({ metrics }: ResultsDisplayProps) => {
     if (!resultsRef.current) return;
     
     try {
+      // Make sure all content is visible
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'visible';
+      
+      // Increase quality and ensure background color is set
       const canvas = await html2canvas(resultsRef.current, { 
         scale: 2,
-        backgroundColor: "#ffffff"
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        logging: true,
+        onclone: (clonedDoc) => {
+          // This ensures the cloned element is fully rendered before capturing
+          const clonedResults = clonedDoc.querySelector('[data-results-container]');
+          if (clonedResults) {
+            clonedResults.setAttribute('style', 'padding: 20px; background-color: white;');
+          }
+        }
       });
       
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+      // Restore overflow
+      document.body.style.overflow = originalOverflow;
+      
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
       const link = document.createElement("a");
       const siteName = metrics.url.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
       link.download = `${siteName}-metrics.jpg`;
@@ -57,37 +74,38 @@ const ResultsDisplay = ({ metrics }: ResultsDisplayProps) => {
     }
   };
   
-  const downloadAsXML = () => {
+  const downloadAsCSV = () => {
     try {
-      // Create XML content
-      const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
-<website_metrics>
-  <url>${metrics.url}</url>
-  <domain_authority>${metrics.domainAuthority}</domain_authority>
-  <page_authority>${metrics.pageAuthority}</page_authority>
-  <spam_score>${metrics.spamScore}</spam_score>
-  <backlinks>${metrics.backlinks}</backlinks>
-  <domain_age>${metrics.domainAge}</domain_age>
-  <check_date>${metrics.checkDate}</check_date>
-</website_metrics>`;
+      // Create CSV content
+      const csvContent = [
+        "Metric,Value",
+        `URL,${metrics.url}`,
+        `Domain Authority,${metrics.domainAuthority}`,
+        `Page Authority,${metrics.pageAuthority}`,
+        `Spam Score,${metrics.spamScore}`,
+        `Backlinks,${metrics.backlinks}`,
+        `Domain Age,${metrics.domainAge}`,
+        `Check Date,${metrics.checkDate}`
+      ].join('\n');
       
       // Create download link
-      const blob = new Blob([xmlContent], { type: 'application/xml' });
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       const siteName = metrics.url.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-      link.download = `${siteName}-metrics.xml`;
-      link.href = URL.createObjectURL(blob);
+      link.download = `${siteName}-metrics.csv`;
+      link.href = url;
       link.click();
       
       toast({
         title: "Success",
-        description: "Results downloaded as XML",
+        description: "Results downloaded as CSV",
       });
     } catch (error) {
-      console.error("Error generating XML:", error);
+      console.error("Error generating CSV:", error);
       toast({
         title: "Error",
-        description: "Failed to download as XML",
+        description: "Failed to download as CSV",
         variant: "destructive",
       });
     }
@@ -122,7 +140,7 @@ const ResultsDisplay = ({ metrics }: ResultsDisplayProps) => {
   const formattedBacklinks = metrics.backlinks.toLocaleString();
 
   return (
-    <div ref={resultsRef} className="w-full max-w-5xl mx-auto mt-8 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+    <div data-results-container ref={resultsRef} className="w-full max-w-5xl mx-auto mt-8 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
       <div className="mb-4 flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{domain}</h2>
@@ -133,9 +151,9 @@ const ResultsDisplay = ({ metrics }: ResultsDisplayProps) => {
             <Image className="w-4 h-4" />
             <span>Save as JPG</span>
           </Button>
-          <Button variant="outline" onClick={downloadAsXML} className="flex items-center space-x-1 border-purple-300 text-purple-700 hover:bg-purple-50">
-            <FileType className="w-4 h-4" />
-            <span>Save as XML</span>
+          <Button variant="outline" onClick={downloadAsCSV} className="flex items-center space-x-1 border-purple-300 text-purple-700 hover:bg-purple-50">
+            <FileText className="w-4 h-4" />
+            <span>Save as CSV</span>
           </Button>
         </div>
       </div>

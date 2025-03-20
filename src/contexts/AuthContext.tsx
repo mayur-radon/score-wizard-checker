@@ -11,6 +11,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string, name?: string) => Promise<boolean>;
   logout: () => Promise<void>;
+  updateUserProfile: (userData: { name?: string }) => Promise<void>;
 }
 
 interface AuthUserDetails {
@@ -127,6 +128,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateUserProfile = async (userData: { name?: string }): Promise<void> => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: userData
+      });
+
+      if (error) throw error;
+
+      // Update local user state
+      if (user) {
+        setUser({
+          ...user,
+          user_metadata: {
+            ...user.user_metadata,
+            ...userData
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      throw error;
+    }
+  };
+
   const logout = async () => {
     setIsLoading(true);
     try {
@@ -143,7 +168,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      isLoading, 
+      login, 
+      register, 
+      logout,
+      updateUserProfile 
+    }}>
       {children}
     </AuthContext.Provider>
   );
