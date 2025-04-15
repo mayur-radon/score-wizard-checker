@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
@@ -239,6 +240,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       await supabase.auth.signOut();
+      // After logout, navigate to home page
+      navigate('/');
     } catch (error) {
       toast({
         title: "Logout error",
