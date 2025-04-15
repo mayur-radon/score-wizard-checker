@@ -1,8 +1,8 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from '@supabase/supabase-js';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: User | null;
@@ -17,11 +17,6 @@ interface AuthContextType {
   isAdmin: boolean;
 }
 
-interface AuthUserDetails {
-  name?: string;
-  email: string;
-}
-
 const ADMIN_EMAIL = "mayur@radon-media.com";
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -31,53 +26,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Check if user is admin
         if (session?.user) {
-          setIsAdmin(session.user.email === ADMIN_EMAIL);
+          const { data, error } = await supabase.auth.getUser(session.access_token);
+          
+          if (error) {
+            toast({
+              title: "Authentication Error",
+              description: "Could not verify user authentication status.",
+              variant: "destructive"
+            });
+            return;
+          }
+
+          const isUserAdmin = data.user?.email === ADMIN_EMAIL;
+          setIsAdmin(isUserAdmin);
+          
+          if (event === 'SIGNED_IN') {
+            toast({
+              title: "Login successful",
+              description: `Welcome back, ${data.user?.email}!`,
+            });
+          }
         } else {
           setIsAdmin(false);
         }
         
         setIsLoading(false);
-        
-        if (event === 'SIGNED_IN' && session) {
-          toast({
-            title: "Login successful",
-            description: `Welcome back, ${session.user.email}!`,
-          });
-        }
-        
-        if (event === 'SIGNED_OUT') {
-          toast({
-            title: "Logged out",
-            description: "You have been successfully logged out",
-          });
-        }
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
-      // Check if user is admin
-      if (session?.user) {
-        setIsAdmin(session.user.email === ADMIN_EMAIL);
-      }
-      
+      setIsAdmin(session?.user?.email === ADMIN_EMAIL || false);
       setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [toast]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -146,29 +141,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/verify-email`,
           data: { name }
         }
       });
       
       if (error) {
         toast({
-          title: "Registration failed",
+          title: "Registration Failed",
           description: error.message,
-          variant: "destructive",
+          variant: "destructive"
         });
         return false;
       }
       
       toast({
-        title: "Registration successful",
-        description: "Your account has been created. Please verify your email if required.",
+        title: "Registration Successful",
+        description: "Please check your email to verify your account.",
       });
       return true;
     } catch (error) {
       toast({
-        title: "Registration error",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
-        variant: "destructive",
+        title: "Registration Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
       });
       return false;
     } finally {
@@ -184,7 +180,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
-      // Update local user state
       if (user) {
         setUser({
           ...user,
