@@ -58,7 +58,8 @@ export const fetchWebsiteMetrics = async (url: string): Promise<WebsiteMetrics> 
     const { data: { user } } = await supabase.auth.getUser();
     
     if (user) {
-      await supabase.from('search_history').insert({
+      console.log("Saving search history for user:", user.id);
+      const { data, error } = await supabase.from('search_history').insert({
         user_id: user.id,
         domain: domain,
         domain_authority: domainAuthority,
@@ -67,6 +68,19 @@ export const fetchWebsiteMetrics = async (url: string): Promise<WebsiteMetrics> 
         backlinks_count: backlinks,
         domain_age: domainAge
       });
+      
+      if (error) {
+        console.error("Error saving search history:", error);
+        toast({
+          title: "Error",
+          description: "Failed to save search history.",
+          variant: "destructive",
+        });
+      } else {
+        console.log("Search history saved successfully:", data);
+      }
+    } else {
+      console.log("User not logged in, skipping search history save");
     }
     
     return result;
@@ -124,9 +138,11 @@ export const getSearchHistory = async (): Promise<WebsiteMetrics[]> => {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
+      console.log("No user found, returning empty search history");
       return [];
     }
     
+    console.log("Fetching search history for user:", user.id);
     const { data, error } = await supabase
       .from('search_history')
       .select('*')
@@ -137,6 +153,8 @@ export const getSearchHistory = async (): Promise<WebsiteMetrics[]> => {
       console.error("Error fetching search history:", error);
       return [];
     }
+    
+    console.log("Search history data:", data);
     
     return data.map(item => ({
       url: `https://${item.domain}`,

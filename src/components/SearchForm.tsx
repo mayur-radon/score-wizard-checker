@@ -33,6 +33,9 @@ const SearchForm = ({ onSearch, isLoading }: SearchFormProps) => {
       processedUrl = `https://${url}`;
     }
     
+    // Log for debugging
+    console.log("Submitting search for URL:", processedUrl);
+    
     onSearch(processedUrl);
   };
 

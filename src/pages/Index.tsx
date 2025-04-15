@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Database, LogIn, UserPlus, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const [metrics, setMetrics] = useState<WebsiteMetrics | null>(null);
@@ -20,12 +21,58 @@ const Index = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
+  // Create profile for user if it doesn't exist
+  useEffect(() => {
+    const createProfileIfNeeded = async () => {
+      if (user) {
+        console.log("Checking profile for user:", user.id);
+        
+        // Check if profile exists
+        const { data: existingProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+          
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error("Error checking profile:", profileError);
+        }
+        
+        // If profile doesn't exist, create it
+        if (!existingProfile) {
+          console.log("Creating profile for user:", user.id);
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              email: user.email
+            });
+            
+          if (insertError) {
+            console.error("Error creating profile:", insertError);
+          } else {
+            console.log("Profile created successfully");
+          }
+        } else {
+          console.log("Profile already exists");
+        }
+      }
+    };
+    
+    createProfileIfNeeded();
+  }, [user]);
+
   useEffect(() => {
     // Load search history on component mount and when user changes
     const loadSearchHistory = async () => {
       if (user) {
+        console.log("Loading search history for user:", user.id);
         const history = await getSearchHistory();
+        console.log("Retrieved search history:", history);
         setRecentSearches(history);
+      } else {
+        console.log("No user logged in, not loading search history");
+        setRecentSearches([]);
       }
     };
     
@@ -37,11 +84,14 @@ const Index = () => {
     setMetrics(null);
     
     try {
+      console.log("Initiating search for URL:", url);
       const result = await fetchWebsiteMetrics(url);
+      console.log("Search results:", result);
       setMetrics(result);
       
       // Update recent searches
       if (user) {
+        console.log("Refreshing search history after new search");
         const history = await getSearchHistory();
         setRecentSearches(history);
       }

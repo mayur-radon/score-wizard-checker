@@ -17,6 +17,7 @@ import { PlusCircle, FileText, Users, Search, BarChart2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import AdminStats from '@/components/AdminStats';
+import { toast } from '@/components/ui/use-toast';
 
 interface RecentSearch {
   id: string;
@@ -39,7 +40,7 @@ interface BlogPost {
 }
 
 const AdminDashboard: React.FC = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const navigate = useNavigate();
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [registeredUsers, setRegisteredUsers] = useState<UserProfile[]>([]);
@@ -47,6 +48,47 @@ const AdminDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
+  // Create profile for the current admin user if it doesn't exist
+  useEffect(() => {
+    const createProfileIfNeeded = async () => {
+      if (user) {
+        console.log("Checking profile for user:", user.id);
+        
+        // Check if profile exists
+        const { data: existingProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+          
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error("Error checking profile:", profileError);
+        }
+        
+        // If profile doesn't exist, create it
+        if (!existingProfile) {
+          console.log("Creating profile for user:", user.id);
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              email: user.email
+            });
+            
+          if (insertError) {
+            console.error("Error creating profile:", insertError);
+          } else {
+            console.log("Profile created successfully");
+          }
+        } else {
+          console.log("Profile already exists");
+        }
+      }
+    };
+    
+    createProfileIfNeeded();
+  }, [user]);
+  
   useEffect(() => {
     if (!isAdmin) {
       navigate('/');
@@ -56,12 +98,20 @@ const AdminDashboard: React.FC = () => {
     const fetchAdminData = async () => {
       setIsLoading(true);
       try {
+        console.log("Fetching admin dashboard data...");
+        
         // Fetch recent searches
         const { data: searchData, error: searchError } = await supabase
           .from('search_history')
           .select('id, domain, domain_authority, created_at')
           .order('created_at', { ascending: false })
           .limit(10);
+
+        if (searchError) {
+          console.error("Error fetching search data:", searchError);
+          throw searchError;
+        }
+        console.log("Search data fetched:", searchData?.length || 0, "results");
 
         // Fetch registered users
         const { data: userData, error: userError } = await supabase
@@ -70,21 +120,39 @@ const AdminDashboard: React.FC = () => {
           .order('created_at', { ascending: false })
           .limit(10);
           
+        if (userError) {
+          console.error("Error fetching user data:", userError);
+          throw userError;
+        }
+        console.log("User data fetched:", userData?.length || 0, "results");
+          
         // Fetch blog posts
         const { data: blogData, error: blogError } = await supabase
           .from('blog_posts')
           .select('id, title, slug, created_at')
           .order('created_at', { ascending: false });
 
-        if (searchError) throw searchError;
-        if (userError) throw userError;
-        if (blogError) throw blogError;
+        if (blogError) {
+          console.error("Error fetching blog data:", blogError);
+          throw blogError;
+        }
+        console.log("Blog data fetched:", blogData?.length || 0, "results");
 
         setRecentSearches(searchData || []);
         setRegisteredUsers(userData || []);
         setBlogPosts(blogData || []);
+        
+        toast({
+          title: "Data Loaded",
+          description: `Found ${userData?.length || 0} users, ${searchData?.length || 0} searches, and ${blogData?.length || 0} blog posts.`,
+        });
       } catch (error) {
         console.error('Error fetching admin data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load admin dashboard data.",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }

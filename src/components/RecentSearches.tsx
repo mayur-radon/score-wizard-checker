@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Search, Clock, Activity } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
+import { useEffect } from "react";
 
 interface RecentSearchesProps {
   searches: WebsiteMetrics[];
@@ -14,6 +15,12 @@ interface RecentSearchesProps {
 
 const RecentSearches = ({ searches, onSelect, isLoading }: RecentSearchesProps) => {
   const { user } = useAuth();
+  
+  useEffect(() => {
+    // Log for debugging
+    console.log("RecentSearches component - User logged in:", !!user);
+    console.log("RecentSearches component - Searches count:", searches.length);
+  }, [user, searches]);
   
   if (searches.length === 0) {
     if (!user) return null;
