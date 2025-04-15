@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,16 +6,7 @@ import { Database, Calendar, User, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
-
-interface BlogPost {
-  id: string;
-  title: string;
-  content: string;
-  excerpt: string;
-  slug: string;
-  created_at: string;
-  updated_at: string;
-}
+import type { BlogPost } from '@/lib/types';
 
 const Blog = () => {
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -30,7 +20,7 @@ const Blog = () => {
         const { data, error } = await supabase
           .from('blog_posts')
           .select('*')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false }) as { data: BlogPost[] | null; error: any };
           
         if (error) throw error;
         
@@ -99,7 +89,6 @@ const Blog = () => {
             {filteredPosts.map((post) => (
               <Card key={post.id} className="overflow-hidden hover:shadow-md transition-shadow">
                 <div className="relative h-48 bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900">
-                  {/* Extract first img from content if exists, otherwise show gradient */}
                   {post.content.includes('<img') ? (
                     <div 
                       dangerouslySetInnerHTML={{ 

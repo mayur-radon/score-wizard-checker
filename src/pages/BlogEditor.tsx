@@ -1,7 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import type { BlogPost } from '@/lib/types';
 import { 
   Card,
   CardContent,
@@ -13,8 +14,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import RichTextEditor from '@/components/RichTextEditor';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
 import { ArrowLeft, Save, Calendar, FileText } from 'lucide-react';
 
 interface BlogPost {
@@ -42,25 +41,19 @@ const BlogEditor = () => {
   const [slug, setSlug] = useState('');
 
   useEffect(() => {
-    // Redirect if not admin
     if (!isAdmin && !isLoading) {
       navigate('/');
-      toast({
-        title: "Access Denied",
-        description: "You don't have permission to access this page.",
-        variant: "destructive"
-      });
+      return;
     }
     
     if (!isNewPost && isAdmin) {
-      // Load existing post
       const fetchPost = async () => {
         try {
           const { data, error } = await supabase
             .from('blog_posts')
             .select('*')
             .eq('id', id)
-            .single();
+            .single() as { data: BlogPost | null; error: any };
             
           if (error) throw error;
           
@@ -92,7 +85,6 @@ const BlogEditor = () => {
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
     
-    // Auto-generate slug if it's a new post and slug is empty
     if (isNewPost && !slug) {
       setSlug(e.target.value
         .toLowerCase()
@@ -126,7 +118,6 @@ const BlogEditor = () => {
       const currentTime = new Date().toISOString();
       
       if (isNewPost) {
-        // Create new post
         const { error } = await supabase
           .from('blog_posts')
           .insert({
@@ -145,7 +136,6 @@ const BlogEditor = () => {
           description: "Blog post created successfully!"
         });
       } else {
-        // Update existing post
         const { error } = await supabase
           .from('blog_posts')
           .update({
@@ -165,7 +155,6 @@ const BlogEditor = () => {
         });
       }
       
-      // Redirect to admin dashboard
       navigate('/admin');
     } catch (error) {
       console.error('Error saving post:', error);

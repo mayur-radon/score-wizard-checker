@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import type { BlogPost } from '@/lib/types';
 import { useToast } from '@/components/ui/use-toast';
 import { 
   Calendar, 
@@ -48,20 +48,19 @@ const BlogPost = () => {
           .from('blog_posts')
           .select('*')
           .eq('slug', slug)
-          .single();
+          .single() as { data: BlogPost | null; error: any };
           
         if (error) throw error;
         
         setPost(data);
         
-        // Fetch related posts
         if (data) {
           const { data: relatedData, error: relatedError } = await supabase
             .from('blog_posts')
             .select('*')
             .neq('id', data.id)
             .order('created_at', { ascending: false })
-            .limit(3);
+            .limit(3) as { data: BlogPost[] | null; error: any };
             
           if (relatedError) throw relatedError;
           
@@ -310,7 +309,6 @@ const BlogPost = () => {
                     className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden"
                   >
                     <div className="h-36 bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900">
-                      {/* Extract first img from content if exists, otherwise show gradient */}
                       {relatedPost.content.includes('<img') ? (
                         <div 
                           dangerouslySetInnerHTML={{ 
