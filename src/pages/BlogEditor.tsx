@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -120,7 +121,10 @@ const BlogEditor = () => {
             updated_at: currentTime
           });
           
-        if (error) throw error;
+        if (error) {
+          console.error('Error saving post:', error);
+          throw error;
+        }
         
         toast({
           title: "Success",
@@ -138,7 +142,10 @@ const BlogEditor = () => {
           })
           .eq('id', id);
           
-        if (error) throw error;
+        if (error) {
+          console.error('Error updating post:', error);
+          throw error;
+        }
         
         toast({
           title: "Success",
