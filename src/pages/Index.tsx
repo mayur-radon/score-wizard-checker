@@ -6,12 +6,12 @@ import ResultsDisplay from "@/components/ResultsDisplay";
 import RecentSearches from "@/components/RecentSearches";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
 import UserProfile from "@/components/UserProfile";
+import HomeContent from "@/components/HomeContent";
 import { WebsiteMetrics, fetchWebsiteMetrics, getSearchHistory } from "@/services/mozApi";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Database, LogIn, UserPlus, Zap, BarChart3, Shield, Globe } from "lucide-react";
+import { Database, LogIn, UserPlus, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 
 const Index = () => {
   const [metrics, setMetrics] = useState<WebsiteMetrics | null>(null);
@@ -101,52 +101,7 @@ const Index = () => {
       
       {!isLoading && !metrics && (
         <div className="container mx-auto px-4 py-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-4">
-              Check Your Website's SEO Metrics Instantly
-            </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-              Our powerful tool helps you understand your website's performance with key metrics from Moz.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-            <Card className="bg-white dark:bg-gray-800 border-0 shadow-md hover:shadow-lg transition-shadow duration-300">
-              <CardContent className="p-6 text-center">
-                <div className="mx-auto w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center mb-4">
-                  <BarChart3 className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Authority Metrics</h3>
-                <p className="text-gray-600 dark:text-gray-300">
-                  Measure domain and page authority to understand your site's ranking potential.
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white dark:bg-gray-800 border-0 shadow-md hover:shadow-lg transition-shadow duration-300">
-              <CardContent className="p-6 text-center">
-                <div className="mx-auto w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mb-4">
-                  <Shield className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Spam Analysis</h3>
-                <p className="text-gray-600 dark:text-gray-300">
-                  Check your site's spam score to ensure it meets search engine guidelines.
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white dark:bg-gray-800 border-0 shadow-md hover:shadow-lg transition-shadow duration-300">
-              <CardContent className="p-6 text-center">
-                <div className="mx-auto w-12 h-12 bg-pink-100 dark:bg-pink-900 rounded-full flex items-center justify-center mb-4">
-                  <Globe className="w-6 h-6 text-pink-600 dark:text-pink-400" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Domain Insights</h3>
-                <p className="text-gray-600 dark:text-gray-300">
-                  Discover your domain age and backlink profile to improve your SEO strategy.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+          <HomeContent />
           
           {/* Only show "Get Started" banner for non-logged in users */}
           {!user && (

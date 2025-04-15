@@ -12,6 +12,9 @@ interface AuthContextType {
   register: (email: string, password: string, name?: string) => Promise<boolean>;
   logout: () => Promise<void>;
   updateUserProfile: (userData: { name?: string }) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<boolean>;
+  googleLogin: () => Promise<boolean>;
+  isAdmin: boolean;
 }
 
 interface AuthUserDetails {
@@ -19,12 +22,14 @@ interface AuthUserDetails {
   email: string;
 }
 
+const ADMIN_EMAIL = "mayur@radon-media.com";
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -33,6 +38,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        
+        // Check if user is admin
+        if (session?.user) {
+          setIsAdmin(session.user.email === ADMIN_EMAIL);
+        } else {
+          setIsAdmin(false);
+        }
+        
         setIsLoading(false);
         
         if (event === 'SIGNED_IN' && session) {
@@ -55,6 +68,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      
+      // Check if user is admin
+      if (session?.user) {
+        setIsAdmin(session.user.email === ADMIN_EMAIL);
+      }
+      
       setIsLoading(false);
     });
 
@@ -88,6 +107,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const googleLogin = async (): Promise<boolean> => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/`
+        }
+      });
+      
+      if (error) {
+        toast({
+          title: "Google login failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      toast({
+        title: "Google login error",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+      return false;
     }
   };
 
@@ -146,9 +194,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         });
       }
+      
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been successfully updated.",
+      });
     } catch (error) {
       console.error("Error updating user profile:", error);
+      toast({
+        title: "Update failed",
+        description: error instanceof Error ? error.message : "Failed to update profile",
+        variant: "destructive",
+      });
       throw error;
+    }
+  };
+  
+  const updatePassword = async (newPassword: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) {
+        toast({
+          title: "Password update failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      toast({
+        title: "Password updated",
+        description: "Your password has been successfully updated.",
+      });
+      return true;
+    } catch (error) {
+      toast({
+        title: "Password update error",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+      return false;
     }
   };
 
@@ -175,7 +263,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login, 
       register, 
       logout,
-      updateUserProfile 
+      updateUserProfile,
+      updatePassword,
+      googleLogin,
+      isAdmin
     }}>
       {children}
     </AuthContext.Provider>
