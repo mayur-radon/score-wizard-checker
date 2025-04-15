@@ -15,16 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import RichTextEditor from '@/components/RichTextEditor';
 import { ArrowLeft, Save, Calendar, FileText } from 'lucide-react';
-
-interface BlogPost {
-  id: string;
-  title: string;
-  content: string;
-  excerpt: string;
-  slug: string;
-  created_at: string;
-  updated_at: string;
-}
+import { useToast } from '@/components/ui/use-toast';
 
 const BlogEditor = () => {
   const { isAdmin } = useAuth();
