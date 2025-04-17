@@ -31,6 +31,7 @@ const RecentSearches = ({ searches, onSelect, isLoading }: RecentSearchesProps) 
           <Clock className="w-12 h-12 mx-auto text-gray-400 mb-4" />
           <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">No Recent Searches</h3>
           <p className="text-gray-600 dark:text-gray-400 mb-4">Your search history will appear here after you analyze websites</p>
+          <p className="text-sm text-gray-500">Free users are limited to 3 searches per day</p>
         </div>
       </div>
     );

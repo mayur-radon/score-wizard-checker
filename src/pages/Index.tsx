@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import SearchForm from "@/components/SearchForm";
 import ResultsDisplay from "@/components/ResultsDisplay";
 import RecentSearches from "@/components/RecentSearches";
+import RecentBlogPosts from "@/components/RecentBlogPosts";  // Add this import
 import LoadingSkeleton from "@/components/LoadingSkeleton";
 import UserProfile from "@/components/UserProfile";
 import HomeContent from "@/components/HomeContent";
@@ -117,10 +118,10 @@ const Index = () => {
       <header className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 py-6 mb-8 shadow-lg">
         <div className="container px-4 mx-auto">
           <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center">
-              <Database className="w-10 h-10 text-white mr-3" />
-              <h1 className="text-3xl md:text-4xl font-bold text-white">Moz DA PA Checker</h1>
-            </div>
+            <Link to="/" className="flex items-center group">
+              <Database className="w-10 h-10 text-white mr-3 group-hover:scale-110 transition-transform" />
+              <h1 className="text-3xl md:text-4xl font-bold text-white group-hover:text-gray-100">Moz DA PA Checker</h1>
+            </Link>
             <div>
               {user ? (
                 <UserProfile />
@@ -151,6 +152,9 @@ const Index = () => {
       
       {!isLoading && !metrics && (
         <div className="container mx-auto px-4 py-8">
+          {/* Recent Blog Posts Section */}
+          <RecentBlogPosts />
+          
           <HomeContent />
           
           {/* Only show "Get Started" banner for non-logged in users */}

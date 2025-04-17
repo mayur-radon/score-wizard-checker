@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -48,13 +47,11 @@ const AdminDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Create profile for the current admin user if it doesn't exist
   useEffect(() => {
     const createProfileIfNeeded = async () => {
       if (user) {
         console.log("Checking profile for user:", user.id);
         
-        // Check if profile exists
         const { data: existingProfile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -65,7 +62,6 @@ const AdminDashboard: React.FC = () => {
           console.error("Error checking profile:", profileError);
         }
         
-        // If profile doesn't exist, create it
         if (!existingProfile) {
           console.log("Creating profile for user:", user.id);
           const { error: insertError } = await supabase
@@ -100,12 +96,21 @@ const AdminDashboard: React.FC = () => {
       try {
         console.log("Fetching admin dashboard data...");
         
-        // Fetch recent searches
+        const { data: userData, error: userError } = await supabase
+          .from('profiles')
+          .select('id, email, created_at')
+          .order('created_at', { ascending: false });
+          
+        if (userError) {
+          console.error("Error fetching user data:", userError);
+          throw userError;
+        }
+        console.log("User data fetched:", userData?.length || 0, "results");
+        
         const { data: searchData, error: searchError } = await supabase
           .from('search_history')
           .select('id, domain, domain_authority, created_at')
-          .order('created_at', { ascending: false })
-          .limit(10);
+          .order('created_at', { ascending: false });
 
         if (searchError) {
           console.error("Error fetching search data:", searchError);
@@ -113,20 +118,6 @@ const AdminDashboard: React.FC = () => {
         }
         console.log("Search data fetched:", searchData?.length || 0, "results");
 
-        // Fetch registered users
-        const { data: userData, error: userError } = await supabase
-          .from('profiles')
-          .select('id, email, created_at')
-          .order('created_at', { ascending: false })
-          .limit(10);
-          
-        if (userError) {
-          console.error("Error fetching user data:", userError);
-          throw userError;
-        }
-        console.log("User data fetched:", userData?.length || 0, "results");
-          
-        // Fetch blog posts
         const { data: blogData, error: blogError } = await supabase
           .from('blog_posts')
           .select('id, title, slug, created_at')

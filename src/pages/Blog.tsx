@@ -88,14 +88,16 @@ const Blog = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredPosts.map((post) => (
               <Card key={post.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                <div className="relative h-48 bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900">
+                <div className="relative h-48 bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 overflow-hidden">
                   {post.content.includes('<img') ? (
-                    <div 
-                      dangerouslySetInnerHTML={{ 
-                        __html: post.content.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/)?.[0] || '' 
-                      }} 
-                      className="w-full h-full object-cover"
-                    />
+                    <div className="w-full h-full">
+                      <div 
+                        dangerouslySetInnerHTML={{ 
+                          __html: post.content.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/)?.[0].replace('<img', '<img class="w-full h-full object-cover"') || '' 
+                        }} 
+                        className="w-full h-full"
+                      />
+                    </div>
                   ) : (
                     <div className="flex items-center justify-center h-full text-5xl text-indigo-300 dark:text-indigo-700 font-bold">
                       DA/PA

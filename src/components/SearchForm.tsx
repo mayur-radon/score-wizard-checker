@@ -76,6 +76,9 @@ const SearchForm = ({ onSearch, isLoading }: SearchFormProps) => {
           )}
         </Button>
       </div>
+      <div className="text-center mt-2 text-white/70 text-sm">
+        <p>Free users are limited to 3 searches per day</p>
+      </div>
     </form>
   );
 };
