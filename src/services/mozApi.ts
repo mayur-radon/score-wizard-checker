@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 // Types
@@ -6,8 +7,8 @@ export interface WebsiteMetrics {
   domainAuthority: number;
   pageAuthority: number;
   spamScore: number;
-  backlinksCount: number;
-  domainAge: number;
+  backlinks: number;  // Changed from backlinksCount to backlinks
+  domainAge: string;  // Changed from number to string
   checkDate: string;
 }
 
@@ -63,8 +64,8 @@ export const fetchWebsiteMetrics = async (url: string): Promise<WebsiteMetrics> 
     domainAuthority: Math.floor(Math.random() * 100) + 1, // 1-100
     pageAuthority: Math.floor(Math.random() * 100) + 1, // 1-100
     spamScore: Math.floor(Math.random() * 10), // 0-10
-    backlinksCount: Math.floor(Math.random() * 10000),
-    domainAge: Math.floor(Math.random() * 20) + 1 // 1-20 years
+    backlinks: Math.floor(Math.random() * 10000), // Changed from backlinksCount to backlinks
+    domainAge: Math.floor(Math.random() * 20) + 1 + " years" // Changed to return a string
   };
   
   try {
@@ -80,7 +81,7 @@ export const fetchWebsiteMetrics = async (url: string): Promise<WebsiteMetrics> 
         domain_authority: mockData.domainAuthority,
         page_authority: mockData.pageAuthority,
         spam_score: mockData.spamScore,
-        backlinks_count: mockData.backlinksCount,
+        backlinks_count: mockData.backlinks,
         domain_age: mockData.domainAge
       });
     }
@@ -91,7 +92,7 @@ export const fetchWebsiteMetrics = async (url: string): Promise<WebsiteMetrics> 
       domainAuthority: mockData.domainAuthority,
       pageAuthority: mockData.pageAuthority,
       spamScore: mockData.spamScore,
-      backlinksCount: mockData.backlinksCount,
+      backlinks: mockData.backlinks,
       domainAge: mockData.domainAge,
       checkDate: new Date().toISOString()
     };
@@ -132,7 +133,7 @@ export const getSearchHistory = async (): Promise<WebsiteMetrics[]> => {
       domainAuthority: item.domain_authority,
       pageAuthority: item.page_authority,
       spamScore: item.spam_score,
-      backlinksCount: item.backlinks_count,
+      backlinks: item.backlinks_count,  // Changed to match the new interface
       domainAge: item.domain_age,
       checkDate: item.created_at
     }));

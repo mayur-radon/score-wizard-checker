@@ -159,7 +159,7 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ metrics }) => {
           <CardContent>
             <div className="text-3xl font-bold mb-2">{metrics.domainAge}</div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-              {metrics.domainAge.includes("year") && parseInt(metrics.domainAge) > 2 
+              {typeof metrics.domainAge === 'string' && metrics.domainAge.includes("year") && parseInt(metrics.domainAge) > 2 
                 ? "Established domain. Age is a positive ranking factor."
                 : "Newer domain. Build trust over time with quality content."}
             </p>
