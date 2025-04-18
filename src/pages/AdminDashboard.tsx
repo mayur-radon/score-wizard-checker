@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,9 +13,8 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { PlusCircle, FileText, Users, Search, BarChart2 } from 'lucide-react';
+import { PlusCircle, FileText, Users, Search, Database } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
 import AdminStats from '@/components/AdminStats';
 import { toast } from '@/components/ui/use-toast';
 
@@ -97,28 +97,47 @@ const AdminDashboard: React.FC = () => {
         console.log("Fetching admin dashboard data...");
         
         // Fetch users with proper select
-        const { data: userData, error: userError } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('*')
+          .select('id, email, created_at')
           .order('created_at', { ascending: false });
           
-        if (userError) throw userError;
+        if (profileError) {
+          console.error("Error fetching profiles:", profileError);
+          throw profileError;
+        }
         
         // Fetch searches with proper select
         const { data: searchData, error: searchError } = await supabase
           .from('search_history')
-          .select('*')
+          .select('id, domain, domain_authority, created_at')
           .order('created_at', { ascending: false });
 
-        if (searchError) throw searchError;
+        if (searchError) {
+          console.error("Error fetching search history:", searchError);
+          throw searchError;
+        }
+        
+        // Fetch blog posts if needed
+        const { data: blogData, error: blogError } = await supabase
+          .from('blog_posts')
+          .select('id, title, slug, created_at')
+          .order('created_at', { ascending: false });
+
+        if (blogError) {
+          console.error("Error fetching blog posts:", blogError);
+          // Don't throw, just log - blog posts are not critical
+        }
         
         // Update state with fetched data
-        setRegisteredUsers(userData || []);
+        setRegisteredUsers(profileData || []);
         setRecentSearches(searchData || []);
+        setBlogPosts(blogData || []);
         
         console.log("Admin data fetched successfully:", {
-          users: userData?.length || 0,
-          searches: searchData?.length || 0
+          users: profileData?.length || 0,
+          searches: searchData?.length || 0,
+          blogs: blogData?.length || 0
         });
         
       } catch (error) {

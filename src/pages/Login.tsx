@@ -32,7 +32,7 @@ const Login = () => {
               <Database className="w-10 h-10 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Login to Moz DA PA Checker</CardTitle>
+          <CardTitle className="text-2xl font-bold">Login to DA PA Checker</CardTitle>
           <CardDescription className="text-base">
             Enter your credentials to access your account
           </CardDescription>
