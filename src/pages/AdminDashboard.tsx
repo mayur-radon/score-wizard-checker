@@ -96,52 +96,36 @@ const AdminDashboard: React.FC = () => {
       try {
         console.log("Fetching admin dashboard data...");
         
+        // Fetch users with proper select
         const { data: userData, error: userError } = await supabase
           .from('profiles')
-          .select('id, email, created_at')
+          .select('*')
           .order('created_at', { ascending: false });
           
-        if (userError) {
-          console.error("Error fetching user data:", userError);
-          throw userError;
-        }
-        console.log("User data fetched:", userData?.length || 0, "results");
+        if (userError) throw userError;
         
+        // Fetch searches with proper select
         const { data: searchData, error: searchError } = await supabase
           .from('search_history')
-          .select('id, domain, domain_authority, created_at')
+          .select('*')
           .order('created_at', { ascending: false });
 
-        if (searchError) {
-          console.error("Error fetching search data:", searchError);
-          throw searchError;
-        }
-        console.log("Search data fetched:", searchData?.length || 0, "results");
-
-        const { data: blogData, error: blogError } = await supabase
-          .from('blog_posts')
-          .select('id, title, slug, created_at')
-          .order('created_at', { ascending: false });
-
-        if (blogError) {
-          console.error("Error fetching blog data:", blogError);
-          throw blogError;
-        }
-        console.log("Blog data fetched:", blogData?.length || 0, "results");
-
-        setRecentSearches(searchData || []);
-        setRegisteredUsers(userData || []);
-        setBlogPosts(blogData || []);
+        if (searchError) throw searchError;
         
-        toast({
-          title: "Data Loaded",
-          description: `Found ${userData?.length || 0} users, ${searchData?.length || 0} searches, and ${blogData?.length || 0} blog posts.`,
+        // Update state with fetched data
+        setRegisteredUsers(userData || []);
+        setRecentSearches(searchData || []);
+        
+        console.log("Admin data fetched successfully:", {
+          users: userData?.length || 0,
+          searches: searchData?.length || 0
         });
+        
       } catch (error) {
         console.error('Error fetching admin data:', error);
         toast({
           title: "Error",
-          description: "Failed to load admin dashboard data.",
+          description: "Failed to load admin dashboard data",
           variant: "destructive",
         });
       } finally {
