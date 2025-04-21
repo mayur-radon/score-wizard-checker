@@ -212,7 +212,7 @@ const Index = () => {
         )}
         
         <div className="container mx-auto px-4">
-          <article className="prose dark:prose-invert max-w-none mb-12">
+          <article className="prose dark:prose-invert max-w-none mb-12 my-article">
             <h2 className="text-3xl font-bold mb-4">Domain Authority & Page Authority Checker Overview</h2>
             <p>Domain Authority checker tools play a very important role in today's digital marketing world, as they help businesses understand how well their website will perform beforehand. While many such tools are available online, the DA PA Checker stands out as a premium platform for understanding your DA scores and insights related to your website's domain authority.</p>
             <p>DA PA Checker domain authority tool collects data and provides detailed reports of the website, which is a simple breakdown of complex insights, making you understand the strengths and weaknesses of the website in question. It is good choice with easy interface for SEO professionals seeking to improvise the strategies for their websites or business owners looking out to boost their online presence by comparing their DA scores with other competitors in the market.</p>
