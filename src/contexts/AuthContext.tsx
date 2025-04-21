@@ -30,7 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    const authListener = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
@@ -71,14 +71,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     });
 
-    // Sync current user to MongoDB if logged in
     syncAuthToMongo();
     
-    // Set up auth listeners to save new users to MongoDB
-    const subscription = setupAuthListeners();
+    const mongoListener = setupAuthListeners();
     
     return () => {
-      subscription.unsubscribe();
+      authListener.subscription.unsubscribe();
+      mongoListener.unsubscribe();
     };
   }, [toast]);
 
@@ -246,7 +245,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       await supabase.auth.signOut();
-      // After logout, navigate to home page
       navigate('/');
     } catch (error) {
       toast({

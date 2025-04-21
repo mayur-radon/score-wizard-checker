@@ -79,7 +79,7 @@ export async function getSearchHistoryFromMongo(userId: string): Promise<Website
       .toArray();
     
     return results.map(item => ({
-      url: `https://${item.domain}`,
+      url: item.url || `https://${item.domain}`,
       domainAuthority: item.domain_authority,
       pageAuthority: item.page_authority,
       spamScore: item.spam_score,
