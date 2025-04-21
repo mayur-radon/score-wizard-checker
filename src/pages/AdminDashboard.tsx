@@ -1,233 +1,427 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import AdminStats from '@/components/AdminStats';
-import { useToast } from '@/components/ui/use-toast';
 import { 
-  getAllUsersFromMongo, 
-  getAllSearchesFromMongo, 
-  getBlogPostsFromMongo,
-  UserProfile,
-  SearchHistory,
-  BlogPost
-} from '@/services/mongoDbService';
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
+import { PlusCircle, FileText, Users, Search, Database } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import AdminStats from '@/components/AdminStats';
+import { toast } from '@/components/ui/use-toast';
 
-const AdminDashboard = () => {
-  const { user, isAdmin } = useAuth();
+interface RecentSearch {
+  id: string;
+  domain: string;
+  domain_authority: number;
+  created_at: string;
+}
+
+interface UserProfile {
+  id: string;
+  email: string;
+  created_at: string;
+}
+
+interface BlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  created_at: string;
+}
+
+const AdminDashboard: React.FC = () => {
+  const { isAdmin, user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [searches, setSearches] = useState<SearchHistory[]>([]);
+  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
+  const [registeredUsers, setRegisteredUsers] = useState<UserProfile[]>([]);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("users");
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-
+    const createProfileIfNeeded = async () => {
+      if (user) {
+        console.log("Checking profile for user:", user.id);
+        
+        const { data: existingProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+          
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error("Error checking profile:", profileError);
+        }
+        
+        if (!existingProfile) {
+          console.log("Creating profile for user:", user.id);
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              email: user.email
+            });
+            
+          if (insertError) {
+            console.error("Error creating profile:", insertError);
+          } else {
+            console.log("Profile created successfully");
+          }
+        } else {
+          console.log("Profile already exists");
+        }
+      }
+    };
+    
+    createProfileIfNeeded();
+  }, [user]);
+  
+  useEffect(() => {
     if (!isAdmin) {
-      toast({
-        title: "Access Denied",
-        description: "You don't have permission to access this page.",
-        variant: "destructive",
-      });
       navigate('/');
       return;
     }
 
-    const fetchData = async () => {
+    const fetchAdminData = async () => {
+      setIsLoading(true);
       try {
-        setLoading(true);
+        console.log("Fetching admin dashboard data...");
         
-        // Fetch users - now returns UserProfile[] directly
-        const usersData = await getAllUsersFromMongo();
-        setUsers(usersData);
+        // Fetch users with proper select
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, email, created_at')
+          .order('created_at', { ascending: false });
+          
+        if (profileError) {
+          console.error("Error fetching profiles:", profileError);
+          throw profileError;
+        }
         
-        // Fetch searches - now returns SearchHistory[] directly
-        const searchesData = await getAllSearchesFromMongo();
-        setSearches(searchesData);
+        // Fetch searches with proper select
+        const { data: searchData, error: searchError } = await supabase
+          .from('search_history')
+          .select('id, domain, domain_authority, created_at')
+          .order('created_at', { ascending: false });
+
+        if (searchError) {
+          console.error("Error fetching search history:", searchError);
+          throw searchError;
+        }
         
-        // Fetch blog posts - now returns BlogPost[] directly
-        const blogData = await getBlogPostsFromMongo();
-        setBlogPosts(blogData);
+        // Fetch blog posts if needed
+        const { data: blogData, error: blogError } = await supabase
+          .from('blog_posts')
+          .select('id, title, slug, created_at')
+          .order('created_at', { ascending: false });
+
+        if (blogError) {
+          console.error("Error fetching blog posts:", blogError);
+          // Don't throw, just log - blog posts are not critical
+        }
+        
+        // Update state with fetched data
+        setRegisteredUsers(profileData || []);
+        setRecentSearches(searchData || []);
+        setBlogPosts(blogData || []);
+        
+        console.log("Admin data fetched successfully:", {
+          users: profileData?.length || 0,
+          searches: searchData?.length || 0,
+          blogs: blogData?.length || 0
+        });
+        
       } catch (error) {
         console.error('Error fetching admin data:', error);
         toast({
           title: "Error",
-          description: "Failed to load admin data",
+          description: "Failed to load admin dashboard data",
           variant: "destructive",
         });
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
-    fetchData();
-  }, [user, isAdmin, navigate, toast]);
+    fetchAdminData();
+  }, [isAdmin, navigate]);
 
-  if (loading) {
-    return (
-      <div className="container mx-auto py-10">
-        <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
-        <p>Loading data...</p>
-      </div>
-    );
-  }
+  if (!isAdmin) return null;
 
   return (
-    <div className="container mx-auto py-10">
-      <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+        <div className="flex gap-3">
+          <Button asChild variant="outline">
+            <Link to="/blog">
+              <FileText className="w-4 h-4 mr-2" />
+              View Blog
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link to="/admin/blog/new">
+              <PlusCircle className="w-4 h-4 mr-2" />
+              New Blog Post
+            </Link>
+          </Button>
+        </div>
+      </div>
       
-      {/* Stats Cards */}
-      <AdminStats 
-        userCount={users.length} 
-        searchCount={searches.length} 
-        blogPostCount={blogPosts.length}
-        setActiveTab={setActiveTab} 
-      />
-      
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-8">
-        <TabsList className="mb-4">
+      <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid grid-cols-4 mb-6">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="searches">Recent Searches</TabsTrigger>
           <TabsTrigger value="blog">Blog Posts</TabsTrigger>
+          <TabsTrigger value="searches">Searches</TabsTrigger>
         </TabsList>
         
-        {/* Users Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <AdminStats 
+              title="Total Users" 
+              value={registeredUsers.length} 
+              icon={<Users className="h-6 w-6 text-indigo-600" />}
+              description="Registered users"
+              viewTab="users"
+              setActiveTab={setActiveTab}
+            />
+            <AdminStats 
+              title="Blog Posts" 
+              value={blogPosts.length} 
+              icon={<FileText className="h-6 w-6 text-indigo-600" />}
+              description="Published articles"
+              viewTab="blog"
+              setActiveTab={setActiveTab}
+            />
+            <AdminStats 
+              title="DA/PA Searches" 
+              value={recentSearches.length} 
+              icon={<Search className="h-6 w-6 text-indigo-600" />}
+              description="Recent search queries"
+              viewTab="searches"
+              setActiveTab={setActiveTab}
+            />
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-medium">Recent Users</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <p>Loading user data...</p>
+                ) : registeredUsers.length === 0 ? (
+                  <p>No registered users found.</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Registered Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {registeredUsers.slice(0, 5).map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>
+                            {new Date(user.created_at).toLocaleDateString()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+                {registeredUsers.length > 5 && (
+                  <Button 
+                    variant="link" 
+                    onClick={() => setActiveTab('users')} 
+                    className="mt-2 p-0 h-auto"
+                  >
+                    View all users
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-medium">Recent Searches</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <p>Loading search data...</p>
+                ) : recentSearches.length === 0 ? (
+                  <p>No recent searches found.</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Domain</TableHead>
+                        <TableHead>Domain Authority</TableHead>
+                        <TableHead>Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {recentSearches.slice(0, 5).map((search) => (
+                        <TableRow key={search.id}>
+                          <TableCell>{search.domain}</TableCell>
+                          <TableCell>{search.domain_authority}</TableCell>
+                          <TableCell>
+                            {new Date(search.created_at).toLocaleDateString()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+                {recentSearches.length > 5 && (
+                  <Button 
+                    variant="link" 
+                    onClick={() => setActiveTab('searches')} 
+                    className="mt-2 p-0 h-auto"
+                  >
+                    View all searches
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+        
         <TabsContent value="users">
-          <Card className="p-4">
-            <h2 className="text-xl font-semibold mb-4">Registered Users</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white rounded-lg">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="py-2 px-4 text-left">User ID</th>
-                    <th className="py-2 px-4 text-left">Email</th>
-                    <th className="py-2 px-4 text-left">Registration Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.length > 0 ? (
-                    users.map((user) => (
-                      <tr key={user.id} className="border-t">
-                        <td className="py-2 px-4">{user.id.substring(0, 8)}...</td>
-                        <td className="py-2 px-4">{user.email}</td>
-                        <td className="py-2 px-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Registered Users</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <p>Loading registered users...</p>
+              ) : registeredUsers.length === 0 ? (
+                <p>No registered users found.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Registered Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {registeredUsers.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>
                           {new Date(user.created_at).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={3} className="py-4 px-4 text-center">
-                        No users found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
           </Card>
         </TabsContent>
         
-        {/* Searches Tab */}
-        <TabsContent value="searches">
-          <Card className="p-4">
-            <h2 className="text-xl font-semibold mb-4">Recent Searches</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white rounded-lg">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="py-2 px-4 text-left">Domain</th>
-                    <th className="py-2 px-4 text-left">DA Score</th>
-                    <th className="py-2 px-4 text-left">PA Score</th>
-                    <th className="py-2 px-4 text-left">User</th>
-                    <th className="py-2 px-4 text-left">Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {searches.length > 0 ? (
-                    searches.map((search, index) => (
-                      <tr key={index} className="border-t">
-                        <td className="py-2 px-4">{search.domain}</td>
-                        <td className="py-2 px-4">{search.domain_authority}</td>
-                        <td className="py-2 px-4">{search.page_authority}</td>
-                        <td className="py-2 px-4">{search.user_id.substring(0, 8)}...</td>
-                        <td className="py-2 px-4">
-                          {new Date(search.created_at).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="py-4 px-4 text-center">
-                        No searches found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </TabsContent>
-        
-        {/* Blog Posts Tab */}
         <TabsContent value="blog">
-          <Card className="p-4">
-            <h2 className="text-xl font-semibold mb-4">Blog Posts</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white rounded-lg">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="py-2 px-4 text-left">Title</th>
-                    <th className="py-2 px-4 text-left">Slug</th>
-                    <th className="py-2 px-4 text-left">Author</th>
-                    <th className="py-2 px-4 text-left">Created</th>
-                    <th className="py-2 px-4 text-left">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {blogPosts.length > 0 ? (
-                    blogPosts.map((post) => (
-                      <tr key={post.id} className="border-t">
-                        <td className="py-2 px-4">{post.title}</td>
-                        <td className="py-2 px-4">{post.slug}</td>
-                        <td className="py-2 px-4">{post.author}</td>
-                        <td className="py-2 px-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Blog Posts</CardTitle>
+              <Button asChild>
+                <Link to="/admin/blog/new">
+                  <PlusCircle className="w-4 h-4 mr-2" />
+                  New Post
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <p>Loading blog posts...</p>
+              ) : blogPosts.length === 0 ? (
+                <p>No blog posts found.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Slug</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {blogPosts.map((post) => (
+                      <TableRow key={post.id}>
+                        <TableCell>{post.title}</TableCell>
+                        <TableCell>{post.slug}</TableCell>
+                        <TableCell>
                           {new Date(post.created_at).toLocaleDateString()}
-                        </td>
-                        <td className="py-2 px-4">
-                          <Dialog>
-                            <DialogTrigger className="text-blue-500 hover:underline">
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button asChild variant="ghost" size="sm">
+                            <Link to={`/admin/blog/${post.id}`}>
+                              Edit
+                            </Link>
+                          </Button>
+                          <Button asChild variant="ghost" size="sm">
+                            <Link to={`/blog/${post.slug}`} target="_blank">
                               View
-                            </DialogTrigger>
-                            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-                              <DialogHeader>
-                                <DialogTitle>{post.title}</DialogTitle>
-                              </DialogHeader>
-                              <div className="mt-4" dangerouslySetInnerHTML={{ __html: post.content }} />
-                            </DialogContent>
-                          </Dialog>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="py-4 px-4 text-center">
-                        No blog posts found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                            </Link>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="searches">
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Searches</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <p>Loading recent searches...</p>
+              ) : recentSearches.length === 0 ? (
+                <p>No recent searches found.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Domain</TableHead>
+                      <TableHead>Domain Authority</TableHead>
+                      <TableHead>Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {recentSearches.map((search) => (
+                      <TableRow key={search.id}>
+                        <TableCell>{search.domain}</TableCell>
+                        <TableCell>{search.domain_authority}</TableCell>
+                        <TableCell>
+                          {new Date(search.created_at).toLocaleDateString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
           </Card>
         </TabsContent>
       </Tabs>

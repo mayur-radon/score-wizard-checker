@@ -4,7 +4,6 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
-import { setupAuthListeners, syncAuthToMongo } from '@/utils/authHelpers';
 
 interface AuthContextType {
   user: User | null;
@@ -31,8 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Renamed from 'subscription' to 'authListener' to avoid naming conflict
-    const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange(
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
@@ -73,15 +71,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     });
 
-    // Sync current user to MongoDB if logged in
-    syncAuthToMongo();
-    
-    // Set up auth listeners to save new users to MongoDB
-    const mongoListener = setupAuthListeners();
-    
     return () => {
-      authListener.unsubscribe();
-      mongoListener.unsubscribe();
+      subscription.unsubscribe();
     };
   }, [toast]);
 
@@ -249,6 +240,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       await supabase.auth.signOut();
+      // After logout, navigate to home page
       navigate('/');
     } catch (error) {
       toast({
