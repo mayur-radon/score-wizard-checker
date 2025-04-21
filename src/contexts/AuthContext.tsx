@@ -31,8 +31,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Renamed from 'subscription' to 'authSubscription' to avoid naming conflict
-    const { data: authListener } = supabase.auth.onAuthStateChange(
+    // Renamed from 'subscription' to 'authListener' to avoid naming conflict
+    const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
@@ -80,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const mongoListener = setupAuthListeners();
     
     return () => {
-      authListener.subscription.unsubscribe();
+      authListener.unsubscribe();
       mongoListener.unsubscribe();
     };
   }, [toast]);

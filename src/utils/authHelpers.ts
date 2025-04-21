@@ -6,7 +6,7 @@ export const syncAuthToMongo = async () => {
   const { data: { user } } = await supabase.auth.getUser();
   
   if (user) {
-    console.log('Syncing Supabase user to MongoDB:', user.id);
+    console.log('Syncing Supabase user to mock MongoDB:', user.id);
     await saveUserToMongo(user.id, user.email || '');
   }
 };

@@ -1,51 +1,53 @@
 
-import { MongoClient, ServerApiVersion, ObjectId } from 'mongodb';
+// Mock MongoDB service for client-side use
 import { WebsiteMetrics } from './mozApi';
 
-// MongoDB connection string
-const uri = "mongodb+srv://mayur-radon:mayur%233010@cluster0.vfxldsx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
-
-// Create a MongoClient with a MongoClientOptions object
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  }
-});
-
-// Database and collection names
-const DB_NAME = 'dapachecker';
-const COLLECTIONS = {
-  searchHistory: 'search_history',
-  users: 'profiles',
-  blogPosts: 'blog_posts'
-};
-
-// Connect to MongoDB
-export async function connectToMongo() {
-  try {
-    await client.connect();
-    console.log("Successfully connected to MongoDB Atlas");
-    return client;
-  } catch (error) {
-    console.error("Error connecting to MongoDB:", error);
-    throw error;
-  }
+// Define interfaces for data types
+interface UserProfile {
+  id: string;
+  email: string;
+  created_at: string;
 }
 
-// Save search result to database
+interface SearchHistory {
+  user_id: string;
+  domain: string;
+  domain_authority: number;
+  page_authority: number;
+  spam_score: number;
+  backlinks_count: number;
+  domain_age: string;
+  url: string;
+  check_date: string;
+  created_at: string;
+}
+
+interface BlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  author: string;
+  created_at: string;
+}
+
+// In-memory storage for mock data
+const mockDb = {
+  users: [] as UserProfile[],
+  searches: [] as SearchHistory[],
+  blogPosts: [] as BlogPost[]
+};
+
+// Save search result to mock database
 export async function saveSearchToMongo(
   userId: string | undefined,
   domain: string, 
   metrics: WebsiteMetrics
 ): Promise<void> {
   try {
-    await connectToMongo();
-    const db = client.db(DB_NAME);
-    const collection = db.collection(COLLECTIONS.searchHistory);
+    console.log("Saving search to mock MongoDB:", domain);
     
-    await collection.insertOne({
+    mockDb.searches.push({
       user_id: userId || 'anonymous',
       domain: domain,
       domain_authority: metrics.domainAuthority,
@@ -58,25 +60,21 @@ export async function saveSearchToMongo(
       created_at: new Date().toISOString()
     });
     
-    console.log("Search saved to MongoDB successfully");
+    console.log("Search saved to mock MongoDB successfully", mockDb.searches);
   } catch (error) {
-    console.error("Error saving search to MongoDB:", error);
+    console.error("Error saving search to mock MongoDB:", error);
     throw error;
-  } finally {
-    await client.close();
   }
 }
 
 // Get search history for a user
 export async function getSearchHistoryFromMongo(userId: string): Promise<WebsiteMetrics[]> {
   try {
-    await connectToMongo();
-    const db = client.db(DB_NAME);
-    const collection = db.collection(COLLECTIONS.searchHistory);
+    console.log("Fetching search history from mock MongoDB for user:", userId);
     
-    const results = await collection.find({ user_id: userId })
-      .sort({ created_at: -1 })
-      .toArray();
+    const results = mockDb.searches
+      .filter(search => search.user_id === userId)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     
     return results.map(item => ({
       url: item.url || `https://${item.domain}`,
@@ -88,82 +86,104 @@ export async function getSearchHistoryFromMongo(userId: string): Promise<Website
       checkDate: item.created_at
     }));
   } catch (error) {
-    console.error("Error fetching search history from MongoDB:", error);
+    console.error("Error fetching search history from mock MongoDB:", error);
     return [];
-  } finally {
-    await client.close();
+  }
+}
+
+// Save user profile to mock MongoDB
+export async function saveUserToMongo(userId: string, email: string) {
+  try {
+    console.log("Saving user to mock MongoDB:", userId);
+    
+    // Check if user already exists
+    const existingUserIndex = mockDb.users.findIndex(user => user.id === userId);
+    
+    if (existingUserIndex === -1) {
+      mockDb.users.push({
+        id: userId,
+        email: email,
+        created_at: new Date().toISOString()
+      });
+      console.log("User saved to mock MongoDB successfully", mockDb.users);
+    }
+  } catch (error) {
+    console.error("Error saving user to mock MongoDB:", error);
   }
 }
 
 // Get all users
 export async function getAllUsersFromMongo() {
   try {
-    await connectToMongo();
-    const db = client.db(DB_NAME);
-    const collection = db.collection(COLLECTIONS.users);
-    
-    return await collection.find().sort({ created_at: -1 }).toArray();
+    console.log("Fetching all users from mock MongoDB");
+    return [...mockDb.users].sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
   } catch (error) {
-    console.error("Error fetching users from MongoDB:", error);
+    console.error("Error fetching users from mock MongoDB:", error);
     return [];
-  } finally {
-    await client.close();
   }
 }
 
 // Get all searches
 export async function getAllSearchesFromMongo() {
   try {
-    await connectToMongo();
-    const db = client.db(DB_NAME);
-    const collection = db.collection(COLLECTIONS.searchHistory);
-    
-    return await collection.find().sort({ created_at: -1 }).toArray();
+    console.log("Fetching all searches from mock MongoDB");
+    return [...mockDb.searches].sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
   } catch (error) {
-    console.error("Error fetching searches from MongoDB:", error);
+    console.error("Error fetching searches from mock MongoDB:", error);
     return [];
-  } finally {
-    await client.close();
-  }
-}
-
-// Save user profile to MongoDB
-export async function saveUserToMongo(userId: string, email: string) {
-  try {
-    await connectToMongo();
-    const db = client.db(DB_NAME);
-    const collection = db.collection(COLLECTIONS.users);
-    
-    // Check if user already exists
-    const existingUser = await collection.findOne({ id: userId });
-    
-    if (!existingUser) {
-      await collection.insertOne({
-        id: userId,
-        email: email,
-        created_at: new Date().toISOString()
-      });
-      console.log("User saved to MongoDB successfully");
-    }
-  } catch (error) {
-    console.error("Error saving user to MongoDB:", error);
-  } finally {
-    await client.close();
   }
 }
 
 // Get all blog posts
 export async function getBlogPostsFromMongo() {
   try {
-    await connectToMongo();
-    const db = client.db(DB_NAME);
-    const collection = db.collection(COLLECTIONS.blogPosts);
+    console.log("Fetching blog posts from mock MongoDB");
     
-    return await collection.find().sort({ created_at: -1 }).toArray();
+    // If no blog posts exist yet, create some sample ones
+    if (mockDb.blogPosts.length === 0) {
+      mockDb.blogPosts = [
+        {
+          id: '1',
+          title: 'Understanding Domain Authority',
+          slug: 'understanding-domain-authority',
+          content: '<p>Domain Authority (DA) is a search engine ranking score that predicts how likely a website is to rank in search engine result pages (SERPs).</p>',
+          author: 'Admin',
+          created_at: new Date().toISOString()
+        },
+        {
+          id: '2',
+          title: 'How to Improve Your Website\'s SEO',
+          slug: 'how-to-improve-your-websites-seo',
+          content: '<p>Improving your website\'s SEO involves multiple strategies including quality content, good technical structure, and backlink building.</p>',
+          author: 'Admin',
+          created_at: new Date(Date.now() - 86400000).toISOString() // 1 day ago
+        },
+        {
+          id: '3',
+          title: 'The Importance of Backlinks',
+          slug: 'the-importance-of-backlinks',
+          content: '<p>Backlinks are a crucial factor in determining a website\'s authority and ranking in search results.</p>',
+          author: 'Admin',
+          created_at: new Date(Date.now() - 172800000).toISOString() // 2 days ago
+        }
+      ];
+    }
+    
+    return [...mockDb.blogPosts].sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
   } catch (error) {
-    console.error("Error fetching blog posts from MongoDB:", error);
+    console.error("Error fetching blog posts from mock MongoDB:", error);
     return [];
-  } finally {
-    await client.close();
   }
+}
+
+// For compatibility with functions that expect the MongoDB client
+export async function connectToMongo() {
+  console.log("Mock connection to MongoDB established");
+  return { close: () => console.log("Mock MongoDB connection closed") };
 }

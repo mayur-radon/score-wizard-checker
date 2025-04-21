@@ -84,9 +84,9 @@ export const fetchWebsiteMetrics = async (url: string): Promise<WebsiteMetrics> 
       checkDate: new Date().toISOString()
     };
 
-    // Save search to MongoDB if user is logged in
+    // Save search to mock MongoDB if user is logged in
     if (userId) {
-      console.log("Saving search to MongoDB for user:", userId);
+      console.log("Saving search to mock MongoDB for user:", userId);
       await saveSearchToMongo(userId, domain, metrics);
     }
 
