@@ -36,24 +36,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          const { data, error } = await supabase.auth.getUser(session.access_token);
+          // Check if user is admin
+          setIsAdmin(session.user.email === ADMIN_EMAIL);
           
-          if (error) {
-            toast({
-              title: "Authentication Error",
-              description: "Could not verify user authentication status.",
-              variant: "destructive"
-            });
-            return;
+          // Create profile if it doesn't exist yet
+          try {
+            const { data: existingProfile, error: checkError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+            
+            if (checkError && checkError.code !== 'PGRST116') {
+              console.error('Error checking profile:', checkError);
+            }
+            
+            if (!existingProfile) {
+              // Profile doesn't exist, create it
+              const { error: insertError } = await supabase
+                .from('profiles')
+                .insert({
+                  id: session.user.id,
+                  email: session.user.email
+                });
+              
+              if (insertError) {
+                console.error('Error creating profile:', insertError);
+              } else {
+                console.log('Profile created successfully');
+              }
+            }
+          } catch (error) {
+            console.error('Error in profile creation:', error);
           }
-
-          const isUserAdmin = data.user?.email === ADMIN_EMAIL;
-          setIsAdmin(isUserAdmin);
           
           if (event === 'SIGNED_IN') {
             toast({
               title: "Login successful",
-              description: `Welcome back, ${data.user?.email}!`,
+              description: `Welcome back, ${session.user.email}!`,
             });
           }
         } else {
@@ -64,6 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
+    // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -76,6 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [toast]);
 
+  // Login function 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
@@ -106,6 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Google login
   const googleLogin = async (): Promise<boolean> => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -135,6 +158,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Register
   const register = async (email: string, password: string, name?: string): Promise<boolean> => {
     setIsLoading(true);
     try {
@@ -173,6 +197,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Update profile
   const updateUserProfile = async (userData: { name?: string }): Promise<void> => {
     try {
       const { error } = await supabase.auth.updateUser({
@@ -206,6 +231,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
+  // Update password
   const updatePassword = async (newPassword: string): Promise<boolean> => {
     try {
       const { error } = await supabase.auth.updateUser({
@@ -236,6 +262,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Logout
   const logout = async () => {
     setIsLoading(true);
     try {

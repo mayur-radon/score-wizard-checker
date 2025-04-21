@@ -7,8 +7,8 @@ export interface WebsiteMetrics {
   domainAuthority: number;
   pageAuthority: number;
   spamScore: number;
-  backlinks: number;  // Changed from backlinksCount to backlinks
-  domainAge: string;  // Changed from number to string
+  backlinks: number;
+  domainAge: string;
   checkDate: string;
 }
 
@@ -41,8 +41,9 @@ export const checkDailySearchLimit = async (userId: string): Promise<boolean> =>
 
 // Function to fetch website metrics
 export const fetchWebsiteMetrics = async (url: string): Promise<WebsiteMetrics> => {
-  const user = supabase.auth.getUser();
-  const userId = (await user).data.user?.id;
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser();
+  const userId = user?.id;
   
   if (userId) {
     const canSearch = await checkDailySearchLimit(userId);
@@ -64,8 +65,8 @@ export const fetchWebsiteMetrics = async (url: string): Promise<WebsiteMetrics> 
     domainAuthority: Math.floor(Math.random() * 100) + 1, // 1-100
     pageAuthority: Math.floor(Math.random() * 100) + 1, // 1-100
     spamScore: Math.floor(Math.random() * 10), // 0-10
-    backlinks: Math.floor(Math.random() * 10000), // Changed from backlinksCount to backlinks
-    domainAge: Math.floor(Math.random() * 20) + 1 + " years" // Changed to return a string
+    backlinks: Math.floor(Math.random() * 10000),
+    domainAge: Math.floor(Math.random() * 20) + 1 + " years"
   };
   
   try {
@@ -75,7 +76,7 @@ export const fetchWebsiteMetrics = async (url: string): Promise<WebsiteMetrics> 
     // Save search to history if user is logged in
     if (userId) {
       console.log("Saving search to history for user:", userId);
-      await supabase.from('search_history').insert({
+      const { error } = await supabase.from('search_history').insert({
         user_id: userId,
         domain: domain,
         domain_authority: mockData.domainAuthority,
@@ -84,6 +85,10 @@ export const fetchWebsiteMetrics = async (url: string): Promise<WebsiteMetrics> 
         backlinks_count: mockData.backlinks,
         domain_age: mockData.domainAge
       });
+      
+      if (error) {
+        console.error("Error saving search:", error);
+      }
     }
 
     // Return mock data
@@ -102,10 +107,11 @@ export const fetchWebsiteMetrics = async (url: string): Promise<WebsiteMetrics> 
   }
 };
 
-// Function to get recent results from local storage
+// Function to get search history from Supabase
 export const getSearchHistory = async (): Promise<WebsiteMetrics[]> => {
-  const user = supabase.auth.getUser();
-  const userId = (await user).data.user?.id;
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser();
+  const userId = user?.id;
   
   if (!userId) {
     console.log("No user logged in, returning empty search history");
@@ -133,7 +139,7 @@ export const getSearchHistory = async (): Promise<WebsiteMetrics[]> => {
       domainAuthority: item.domain_authority,
       pageAuthority: item.page_authority,
       spamScore: item.spam_score,
-      backlinks: item.backlinks_count,  // Changed to match the new interface
+      backlinks: item.backlinks_count,
       domainAge: item.domain_age,
       checkDate: item.created_at
     }));
@@ -143,7 +149,7 @@ export const getSearchHistory = async (): Promise<WebsiteMetrics[]> => {
   }
 };
 
-// Function to clear local storage
+// Function to clear local storage (deprecated, kept for backward compatibility)
 export const clearSearchHistory = (): void => {
   localStorage.removeItem('recentSearches');
 };
