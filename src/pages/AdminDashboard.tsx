@@ -7,44 +7,21 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import AdminStats from '@/components/AdminStats';
 import { useToast } from '@/components/ui/use-toast';
-import { getAllUsersFromMongo, getAllSearchesFromMongo, getBlogPostsFromMongo } from '@/services/mongoDbService';
-import { Document, WithId } from 'mongodb';
-
-// Define interfaces for MongoDB documents
-interface UserProfile {
-  id: string;
-  email: string;
-  created_at: string;
-}
-
-interface RecentSearch {
-  user_id: string;
-  domain: string;
-  domain_authority: number;
-  page_authority: number;
-  spam_score: number;
-  backlinks_count: number;
-  domain_age: string;
-  url: string;
-  check_date: string;
-  created_at: string;
-}
-
-interface BlogPost {
-  id: string;
-  title: string;
-  slug: string;
-  content: string;
-  author: string;
-  created_at: string;
-}
+import { 
+  getAllUsersFromMongo, 
+  getAllSearchesFromMongo, 
+  getBlogPostsFromMongo,
+  UserProfile,
+  SearchHistory,
+  BlogPost
+} from '@/services/mongoDbService';
 
 const AdminDashboard = () => {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [users, setUsers] = useState<UserProfile[]>([]);
-  const [searches, setSearches] = useState<RecentSearch[]>([]);
+  const [searches, setSearches] = useState<SearchHistory[]>([]);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("users");
@@ -69,42 +46,17 @@ const AdminDashboard = () => {
       try {
         setLoading(true);
         
-        // Fetch users
+        // Fetch users - now returns UserProfile[] directly
         const usersData = await getAllUsersFromMongo();
-        const typedUsersData = usersData.map((doc: WithId<Document>) => ({
-          id: doc.id as string,
-          email: doc.email as string,
-          created_at: doc.created_at as string
-        }));
-        setUsers(typedUsersData);
+        setUsers(usersData);
         
-        // Fetch searches
+        // Fetch searches - now returns SearchHistory[] directly
         const searchesData = await getAllSearchesFromMongo();
-        const typedSearchesData = searchesData.map((doc: WithId<Document>) => ({
-          user_id: doc.user_id as string,
-          domain: doc.domain as string,
-          domain_authority: doc.domain_authority as number,
-          page_authority: doc.page_authority as number,
-          spam_score: doc.spam_score as number,
-          backlinks_count: doc.backlinks_count as number,
-          domain_age: doc.domain_age as string,
-          url: doc.url as string,
-          check_date: doc.check_date as string,
-          created_at: doc.created_at as string
-        }));
-        setSearches(typedSearchesData);
+        setSearches(searchesData);
         
-        // Fetch blog posts
+        // Fetch blog posts - now returns BlogPost[] directly
         const blogData = await getBlogPostsFromMongo();
-        const typedBlogData = blogData.map((doc: WithId<Document>) => ({
-          id: doc._id.toString(),
-          title: doc.title as string,
-          slug: doc.slug as string,
-          content: doc.content as string,
-          author: doc.author as string,
-          created_at: doc.created_at as string
-        }));
-        setBlogPosts(typedBlogData);
+        setBlogPosts(blogData);
       } catch (error) {
         console.error('Error fetching admin data:', error);
         toast({

@@ -3,13 +3,13 @@
 import { WebsiteMetrics } from './mozApi';
 
 // Define interfaces for data types
-interface UserProfile {
+export interface UserProfile {
   id: string;
   email: string;
   created_at: string;
 }
 
-interface SearchHistory {
+export interface SearchHistory {
   user_id: string;
   domain: string;
   domain_authority: number;
@@ -22,7 +22,7 @@ interface SearchHistory {
   created_at: string;
 }
 
-interface BlogPost {
+export interface BlogPost {
   id: string;
   title: string;
   slug: string;
@@ -113,7 +113,7 @@ export async function saveUserToMongo(userId: string, email: string) {
 }
 
 // Get all users
-export async function getAllUsersFromMongo() {
+export async function getAllUsersFromMongo(): Promise<UserProfile[]> {
   try {
     console.log("Fetching all users from mock MongoDB");
     return [...mockDb.users].sort((a, b) => 
@@ -126,7 +126,7 @@ export async function getAllUsersFromMongo() {
 }
 
 // Get all searches
-export async function getAllSearchesFromMongo() {
+export async function getAllSearchesFromMongo(): Promise<SearchHistory[]> {
   try {
     console.log("Fetching all searches from mock MongoDB");
     return [...mockDb.searches].sort((a, b) => 
@@ -139,7 +139,7 @@ export async function getAllSearchesFromMongo() {
 }
 
 // Get all blog posts
-export async function getBlogPostsFromMongo() {
+export async function getBlogPostsFromMongo(): Promise<BlogPost[]> {
   try {
     console.log("Fetching blog posts from mock MongoDB");
     
