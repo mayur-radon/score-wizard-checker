@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from "@/integrations/supabase/client";
@@ -30,7 +31,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
 
   useEffect(() => {
-    const authListener = supabase.auth.onAuthStateChange(
+    // Renamed from 'subscription' to 'authSubscription' to avoid naming conflict
+    const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
@@ -71,8 +73,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     });
 
+    // Sync current user to MongoDB if logged in
     syncAuthToMongo();
     
+    // Set up auth listeners to save new users to MongoDB
     const mongoListener = setupAuthListeners();
     
     return () => {

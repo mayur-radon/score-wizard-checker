@@ -47,6 +47,7 @@ const AdminDashboard = () => {
   const [searches, setSearches] = useState<RecentSearch[]>([]);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("users");
 
   useEffect(() => {
     if (!user) {
@@ -136,10 +137,11 @@ const AdminDashboard = () => {
       <AdminStats 
         userCount={users.length} 
         searchCount={searches.length} 
-        blogPostCount={blogPosts.length} 
+        blogPostCount={blogPosts.length}
+        setActiveTab={setActiveTab} 
       />
       
-      <Tabs defaultValue="users" className="mt-8">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-8">
         <TabsList className="mb-4">
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="searches">Recent Searches</TabsTrigger>
