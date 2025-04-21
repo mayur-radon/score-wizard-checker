@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { saveSearchToMongo, getSearchHistoryFromMongo } from './mongoDbService';
 
 // Types
 export interface WebsiteMetrics {
@@ -72,22 +73,8 @@ export const fetchWebsiteMetrics = async (url: string): Promise<WebsiteMetrics> 
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Save search to history if user is logged in
-    if (userId) {
-      console.log("Saving search to history for user:", userId);
-      await supabase.from('search_history').insert({
-        user_id: userId,
-        domain: domain,
-        domain_authority: mockData.domainAuthority,
-        page_authority: mockData.pageAuthority,
-        spam_score: mockData.spamScore,
-        backlinks_count: mockData.backlinks,
-        domain_age: mockData.domainAge
-      });
-    }
-
-    // Return mock data
-    return {
+    // Create the metrics object
+    const metrics: WebsiteMetrics = {
       url: url,
       domainAuthority: mockData.domainAuthority,
       pageAuthority: mockData.pageAuthority,
@@ -96,13 +83,21 @@ export const fetchWebsiteMetrics = async (url: string): Promise<WebsiteMetrics> 
       domainAge: mockData.domainAge,
       checkDate: new Date().toISOString()
     };
+
+    // Save search to MongoDB if user is logged in
+    if (userId) {
+      console.log("Saving search to MongoDB for user:", userId);
+      await saveSearchToMongo(userId, domain, metrics);
+    }
+
+    return metrics;
   } catch (error: any) {
     console.error("Error fetching website metrics:", error);
     throw new Error(error.message || "Failed to fetch website metrics");
   }
 };
 
-// Function to get recent results from local storage
+// Function to get search history
 export const getSearchHistory = async (): Promise<WebsiteMetrics[]> => {
   const user = supabase.auth.getUser();
   const userId = (await user).data.user?.id;
@@ -114,29 +109,7 @@ export const getSearchHistory = async (): Promise<WebsiteMetrics[]> => {
   
   try {
     console.log("Fetching search history for user:", userId);
-    const { data, error } = await supabase
-      .from('search_history')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error("Error fetching search history:", error);
-      return [];
-    }
-    
-    console.log("Retrieved search history:", data?.length || 0, "items");
-    
-    // Convert the database records to WebsiteMetrics format
-    return (data || []).map(item => ({
-      url: `https://${item.domain}`,
-      domainAuthority: item.domain_authority,
-      pageAuthority: item.page_authority,
-      spamScore: item.spam_score,
-      backlinks: item.backlinks_count,  // Changed to match the new interface
-      domainAge: item.domain_age,
-      checkDate: item.created_at
-    }));
+    return await getSearchHistoryFromMongo(userId);
   } catch (error) {
     console.error("Error in getSearchHistory:", error);
     return [];

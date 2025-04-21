@@ -17,18 +17,21 @@ import { PlusCircle, FileText, Users, Search, Database } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AdminStats from '@/components/AdminStats';
 import { toast } from '@/components/ui/use-toast';
+import { getAllUsersFromMongo, getAllSearchesFromMongo, getBlogPostsFromMongo } from '@/services/mongoDbService';
 
 interface RecentSearch {
-  id: string;
+  id?: string;
   domain: string;
   domain_authority: number;
   created_at: string;
+  _id?: string;
 }
 
 interface UserProfile {
   id: string;
   email: string;
   created_at: string;
+  _id?: string;
 }
 
 interface BlogPost {
@@ -36,6 +39,7 @@ interface BlogPost {
   title: string;
   slug: string;
   created_at: string;
+  _id?: string;
 }
 
 const AdminDashboard: React.FC = () => {
@@ -48,44 +52,6 @@ const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
-    const createProfileIfNeeded = async () => {
-      if (user) {
-        console.log("Checking profile for user:", user.id);
-        
-        const { data: existingProfile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-          
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.error("Error checking profile:", profileError);
-        }
-        
-        if (!existingProfile) {
-          console.log("Creating profile for user:", user.id);
-          const { error: insertError } = await supabase
-            .from('profiles')
-            .insert({
-              id: user.id,
-              email: user.email
-            });
-            
-          if (insertError) {
-            console.error("Error creating profile:", insertError);
-          } else {
-            console.log("Profile created successfully");
-          }
-        } else {
-          console.log("Profile already exists");
-        }
-      }
-    };
-    
-    createProfileIfNeeded();
-  }, [user]);
-  
-  useEffect(() => {
     if (!isAdmin) {
       navigate('/');
       return;
@@ -94,40 +60,16 @@ const AdminDashboard: React.FC = () => {
     const fetchAdminData = async () => {
       setIsLoading(true);
       try {
-        console.log("Fetching admin dashboard data...");
+        console.log("Fetching admin dashboard data from MongoDB...");
         
-        // Fetch users with proper select
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, email, created_at')
-          .order('created_at', { ascending: false });
-          
-        if (profileError) {
-          console.error("Error fetching profiles:", profileError);
-          throw profileError;
-        }
+        // Fetch users from MongoDB
+        const profileData = await getAllUsersFromMongo();
         
-        // Fetch searches with proper select
-        const { data: searchData, error: searchError } = await supabase
-          .from('search_history')
-          .select('id, domain, domain_authority, created_at')
-          .order('created_at', { ascending: false });
-
-        if (searchError) {
-          console.error("Error fetching search history:", searchError);
-          throw searchError;
-        }
+        // Fetch searches from MongoDB
+        const searchData = await getAllSearchesFromMongo();
         
-        // Fetch blog posts if needed
-        const { data: blogData, error: blogError } = await supabase
-          .from('blog_posts')
-          .select('id, title, slug, created_at')
-          .order('created_at', { ascending: false });
-
-        if (blogError) {
-          console.error("Error fetching blog posts:", blogError);
-          // Don't throw, just log - blog posts are not critical
-        }
+        // Fetch blog posts from MongoDB (if implemented)
+        const blogData = await getBlogPostsFromMongo();
         
         // Update state with fetched data
         setRegisteredUsers(profileData || []);
@@ -233,7 +175,7 @@ const AdminDashboard: React.FC = () => {
                     </TableHeader>
                     <TableBody>
                       {registeredUsers.slice(0, 5).map((user) => (
-                        <TableRow key={user.id}>
+                        <TableRow key={user.id || user._id}>
                           <TableCell>{user.email}</TableCell>
                           <TableCell>
                             {new Date(user.created_at).toLocaleDateString()}
@@ -275,7 +217,7 @@ const AdminDashboard: React.FC = () => {
                     </TableHeader>
                     <TableBody>
                       {recentSearches.slice(0, 5).map((search) => (
-                        <TableRow key={search.id}>
+                        <TableRow key={search.id || search._id}>
                           <TableCell>{search.domain}</TableCell>
                           <TableCell>{search.domain_authority}</TableCell>
                           <TableCell>
@@ -320,7 +262,7 @@ const AdminDashboard: React.FC = () => {
                   </TableHeader>
                   <TableBody>
                     {registeredUsers.map((user) => (
-                      <TableRow key={user.id}>
+                      <TableRow key={user.id || user._id}>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>
                           {new Date(user.created_at).toLocaleDateString()}
@@ -362,7 +304,7 @@ const AdminDashboard: React.FC = () => {
                   </TableHeader>
                   <TableBody>
                     {blogPosts.map((post) => (
-                      <TableRow key={post.id}>
+                      <TableRow key={post.id || post._id}>
                         <TableCell>{post.title}</TableCell>
                         <TableCell>{post.slug}</TableCell>
                         <TableCell>
@@ -370,7 +312,7 @@ const AdminDashboard: React.FC = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <Button asChild variant="ghost" size="sm">
-                            <Link to={`/admin/blog/${post.id}`}>
+                            <Link to={`/admin/blog/${post.id || post._id}`}>
                               Edit
                             </Link>
                           </Button>
@@ -410,7 +352,7 @@ const AdminDashboard: React.FC = () => {
                   </TableHeader>
                   <TableBody>
                     {recentSearches.map((search) => (
-                      <TableRow key={search.id}>
+                      <TableRow key={search.id || search._id}>
                         <TableCell>{search.domain}</TableCell>
                         <TableCell>{search.domain_authority}</TableCell>
                         <TableCell>
