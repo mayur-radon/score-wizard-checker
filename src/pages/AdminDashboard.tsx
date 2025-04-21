@@ -13,18 +13,16 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { PlusCircle, FileText, Users, Search, ArrowUp } from 'lucide-react';
+import { PlusCircle, FileText, Users, Search, Database } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AdminStats from '@/components/AdminStats';
 import { toast } from '@/components/ui/use-toast';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface RecentSearch {
   id: string;
   domain: string;
   domain_authority: number;
   created_at: string;
-  user_id: string;
 }
 
 interface UserProfile {
@@ -50,6 +48,44 @@ const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
+    const createProfileIfNeeded = async () => {
+      if (user) {
+        console.log("Checking profile for user:", user.id);
+        
+        const { data: existingProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+          
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error("Error checking profile:", profileError);
+        }
+        
+        if (!existingProfile) {
+          console.log("Creating profile for user:", user.id);
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              email: user.email
+            });
+            
+          if (insertError) {
+            console.error("Error creating profile:", insertError);
+          } else {
+            console.log("Profile created successfully");
+          }
+        } else {
+          console.log("Profile already exists");
+        }
+      }
+    };
+    
+    createProfileIfNeeded();
+  }, [user]);
+  
+  useEffect(() => {
     if (!isAdmin) {
       navigate('/');
       return;
@@ -60,7 +96,7 @@ const AdminDashboard: React.FC = () => {
       try {
         console.log("Fetching admin dashboard data...");
         
-        // Fetch profiles
+        // Fetch users with proper select
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('id, email, created_at')
@@ -71,10 +107,10 @@ const AdminDashboard: React.FC = () => {
           throw profileError;
         }
         
-        // Fetch searches
+        // Fetch searches with proper select
         const { data: searchData, error: searchError } = await supabase
           .from('search_history')
-          .select('id, domain, domain_authority, created_at, user_id')
+          .select('id, domain, domain_authority, created_at')
           .order('created_at', { ascending: false });
 
         if (searchError) {
@@ -82,7 +118,7 @@ const AdminDashboard: React.FC = () => {
           throw searchError;
         }
         
-        // Fetch blog posts
+        // Fetch blog posts if needed
         const { data: blogData, error: blogError } = await supabase
           .from('blog_posts')
           .select('id, title, slug, created_at')
@@ -188,26 +224,24 @@ const AdminDashboard: React.FC = () => {
                 ) : registeredUsers.length === 0 ? (
                   <p>No registered users found.</p>
                 ) : (
-                  <ScrollArea className="h-[250px]">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Registered Date</TableHead>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Registered Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {registeredUsers.slice(0, 5).map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>
+                            {new Date(user.created_at).toLocaleDateString()}
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {registeredUsers.slice(0, 5).map((user) => (
-                          <TableRow key={user.id}>
-                            <TableCell>{user.email}</TableCell>
-                            <TableCell>
-                              {new Date(user.created_at).toLocaleDateString()}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </ScrollArea>
+                      ))}
+                    </TableBody>
+                  </Table>
                 )}
                 {registeredUsers.length > 5 && (
                   <Button 
@@ -231,28 +265,26 @@ const AdminDashboard: React.FC = () => {
                 ) : recentSearches.length === 0 ? (
                   <p>No recent searches found.</p>
                 ) : (
-                  <ScrollArea className="h-[250px]">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Domain</TableHead>
-                          <TableHead>Domain Authority</TableHead>
-                          <TableHead>Date</TableHead>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Domain</TableHead>
+                        <TableHead>Domain Authority</TableHead>
+                        <TableHead>Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {recentSearches.slice(0, 5).map((search) => (
+                        <TableRow key={search.id}>
+                          <TableCell>{search.domain}</TableCell>
+                          <TableCell>{search.domain_authority}</TableCell>
+                          <TableCell>
+                            {new Date(search.created_at).toLocaleDateString()}
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {recentSearches.slice(0, 5).map((search) => (
-                          <TableRow key={search.id}>
-                            <TableCell>{search.domain}</TableCell>
-                            <TableCell>{search.domain_authority}</TableCell>
-                            <TableCell>
-                              {new Date(search.created_at).toLocaleDateString()}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </ScrollArea>
+                      ))}
+                    </TableBody>
+                  </Table>
                 )}
                 {recentSearches.length > 5 && (
                   <Button 
@@ -279,26 +311,24 @@ const AdminDashboard: React.FC = () => {
               ) : registeredUsers.length === 0 ? (
                 <p>No registered users found.</p>
               ) : (
-                <ScrollArea className="h-[600px]">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Registered Date</TableHead>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Registered Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {registeredUsers.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {registeredUsers.map((user) => (
-                        <TableRow key={user.id}>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell>
-                            {new Date(user.created_at).toLocaleDateString()}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
             </CardContent>
           </Card>
@@ -321,41 +351,39 @@ const AdminDashboard: React.FC = () => {
               ) : blogPosts.length === 0 ? (
                 <p>No blog posts found.</p>
               ) : (
-                <ScrollArea className="h-[600px]">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Title</TableHead>
-                        <TableHead>Slug</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Slug</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {blogPosts.map((post) => (
+                      <TableRow key={post.id}>
+                        <TableCell>{post.title}</TableCell>
+                        <TableCell>{post.slug}</TableCell>
+                        <TableCell>
+                          {new Date(post.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button asChild variant="ghost" size="sm">
+                            <Link to={`/admin/blog/${post.id}`}>
+                              Edit
+                            </Link>
+                          </Button>
+                          <Button asChild variant="ghost" size="sm">
+                            <Link to={`/blog/${post.slug}`} target="_blank">
+                              View
+                            </Link>
+                          </Button>
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {blogPosts.map((post) => (
-                        <TableRow key={post.id}>
-                          <TableCell>{post.title}</TableCell>
-                          <TableCell>{post.slug}</TableCell>
-                          <TableCell>
-                            {new Date(post.created_at).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button asChild variant="ghost" size="sm">
-                              <Link to={`/admin/blog/${post.id}`}>
-                                Edit
-                              </Link>
-                            </Button>
-                            <Button asChild variant="ghost" size="sm">
-                              <Link to={`/blog/${post.slug}`} target="_blank">
-                                View
-                              </Link>
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
             </CardContent>
           </Card>
@@ -372,28 +400,26 @@ const AdminDashboard: React.FC = () => {
               ) : recentSearches.length === 0 ? (
                 <p>No recent searches found.</p>
               ) : (
-                <ScrollArea className="h-[600px]">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Domain</TableHead>
-                        <TableHead>Domain Authority</TableHead>
-                        <TableHead>Date</TableHead>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Domain</TableHead>
+                      <TableHead>Domain Authority</TableHead>
+                      <TableHead>Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {recentSearches.map((search) => (
+                      <TableRow key={search.id}>
+                        <TableCell>{search.domain}</TableCell>
+                        <TableCell>{search.domain_authority}</TableCell>
+                        <TableCell>
+                          {new Date(search.created_at).toLocaleDateString()}
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {recentSearches.map((search) => (
-                        <TableRow key={search.id}>
-                          <TableCell>{search.domain}</TableCell>
-                          <TableCell>{search.domain_authority}</TableCell>
-                          <TableCell>
-                            {new Date(search.created_at).toLocaleDateString()}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
             </CardContent>
           </Card>
